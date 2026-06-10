@@ -1,9 +1,9 @@
 # GHA-style manifest — the contract between this action and the workflow runner.
 # Keep in sync with w3-action.yaml (the W3/MCP manifest).
 #
-# DRAFT v0 (Story 1.2 / W3-797): two commands, no `tombstone` (the UserDeletion
-# write is a state write; the gate is the deletion-attested input). Pending RJ's
-# confirmation on w3-give #104.
+# v0 (Story 1.2 / W3-797): two commands, no `tombstone` (the UserDeletion
+# write is a state write; the gate is the deletion-attested input). Confirmed
+# on w3-give #104 (RJ, 2026-06-10).
 
 name: 'W3 PII Envelope Action'
 description: 'Self-hosted donor-PII envelope: in-action DEK, AES-256-GCM, Storj blob, tenant-KEK wrap, deletion-attested gate'

@@ -1,9 +1,8 @@
 # w3-pii-action
 
-> **DRAFT scaffold — Story 1.2 (W3-797, Epic 1 W3-767).** The two-command contract
-> (no `tombstone`; orchestrator passes `deletion-attested`) is pending RJ's nod on
-> w3-give #104. Implementation lands via the Story 1.2 dev pass. Do not publish
-> until the contract is confirmed.
+> **Story 1.2 (W3-797, Epic 1 W3-767).** The two-command contract (no `tombstone`;
+> orchestrator passes `deletion-attested`) was confirmed on w3-give #104
+> (RJ, 2026-06-10). Implementation lands via the Story 1.2 dev pass.
 
 Self-hosted donor-PII envelope for w3-give workflows, mirroring the `w3-sxt-action`
 shape (scaffolded from `w3-io/w3-action-template`).
@@ -59,7 +58,7 @@ Contract source of truth: [`w3-action.yaml`](w3-action.yaml). Design inputs:
 
 - [x] Scaffold from `w3-io/w3-action-template`
 - [x] Draft invocation contract (`w3-action.yaml` + `action.yml`)
-- [ ] Contract confirmed (RJ, w3-give #104)
+- [x] Contract confirmed (RJ, w3-give #104, 2026-06-10)
 - [ ] Implementation (`src/`): crypto + Storj client + command router
 - [ ] Tests + conformance: byte-exact round-trip (multibyte fixture),
       deletion-refusal (no plaintext), tenant isolation, idempotent re-put

@@ -1,8 +1,8 @@
 # W3 manifest — synced to the MCP registry on release. Keep in sync with action.yml.
 #
-# DRAFT v0 contract (Story 1.2 / W3-797, Epic 1 W3-767). The two-command shape
-# (no `tombstone` command; orchestrator passes `deletion-attested` in) is pending
-# RJ's confirmation on w3-give #104 — see that PR thread before publishing.
+# v0 contract (Story 1.2 / W3-797, Epic 1 W3-767). The two-command shape
+# (no `tombstone` command; orchestrator passes `deletion-attested` in) was
+# confirmed on w3-give #104 (RJ, 2026-06-10) and folded into the epic.
 
 kind: integration
 partner: w3-give
