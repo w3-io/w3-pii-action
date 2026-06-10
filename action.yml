@@ -1,0 +1,65 @@
+# GHA-style manifest — the contract between this action and the workflow runner.
+# Keep in sync with w3-action.yaml (the W3/MCP manifest).
+#
+# DRAFT v0 (Story 1.2 / W3-797): two commands, no `tombstone` (the UserDeletion
+# write is a state write; the gate is the deletion-attested input). Pending RJ's
+# confirmation on w3-give #104.
+
+name: 'W3 PII Envelope Action'
+description: 'Self-hosted donor-PII envelope: in-action DEK, AES-256-GCM, Storj blob, tenant-KEK wrap, deletion-attested gate'
+author: 'w3-io'
+
+inputs:
+  command:
+    description: 'Operation: encrypt-and-store, decrypt-for-read'
+    required: true
+
+  # Common scope
+  tenant-id:
+    description: 'Tenant scope; selects the KEK and prefixes the blob key'
+    required: true
+  user-id:
+    description: 'Donor id; blob-key segment / audit scope'
+    required: true
+  bucket:
+    description: 'Storj bucket (e.g. hope-give-pii)'
+    required: true
+  provider:
+    description: 'KEK provider (default: self-hosted)'
+    required: false
+    default: 'self-hosted'
+
+  # Secret-backed — pass via ${{ secrets.* }}, never inline
+  kek:
+    description: 'Tenant master KEK (secret-backed)'
+    required: true
+  storj-access-key:
+    description: 'Storj access key (secret-backed)'
+    required: true
+  storj-secret-key:
+    description: 'Storj secret key (secret-backed)'
+    required: true
+
+  # encrypt-and-store
+  plaintext:
+    description: 'PII payload (JSON string) to encrypt'
+    required: false
+
+  # decrypt-for-read
+  wrapped-dek:
+    description: 'KEK-wrapped per-user DEK (from the User row)'
+    required: false
+  pii-blob-key:
+    description: 'Storj blob key (from the User row)'
+    required: false
+  deletion-attested:
+    description: "'true' if a UserDeletion attestation exists (caller reads state); true => ACCESS_DENIED, no plaintext"
+    required: false
+
+outputs:
+  result:
+    description: 'JSON result: encrypt-and-store -> { wrapped_dek, pii_blob_key }; decrypt-for-read -> { plaintext }'
+
+runs:
+  using: 'node24'
+  main: 'dist/index.js'

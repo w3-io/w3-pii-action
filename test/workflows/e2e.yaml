@@ -1,0 +1,37 @@
+# E2E Test Workflow
+#
+# Exercises every command against real APIs/contracts.
+# Run on a local W3 network with:
+#   w3 workflow deploy test/workflows/e2e.yaml
+#   w3 workflow "<name>" trigger
+#
+# Prerequisites:
+#   - W3 local network running (make dev)
+#   - TODO: list required env vars (e.g., export W3_SECRET_ETHEREUM="0x...")
+#
+# This workflow is NOT run by CI. It's a manual validation tool
+# for proving the action works end-to-end through the W3 protocol.
+
+name: e2e-test-yourpartner # TODO: change to your action name
+on: workflow_dispatch
+
+jobs:
+  reads:
+    runs-on: ubuntu-latest
+    steps:
+      # TODO: Add read-only commands here
+      - name: Example read command
+        uses: w3-io/w3-yourpartner-action@v0
+        with:
+          command: example-command
+          # TODO: add required inputs
+
+  writes:
+    runs-on: ubuntu-latest
+    steps:
+      # TODO: Add write commands here (require credentials)
+      - name: Example write command
+        uses: w3-io/w3-yourpartner-action@v0
+        with:
+          command: example-write
+          # TODO: add required inputs

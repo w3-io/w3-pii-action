@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://w3.io/schemas/w3-action-display.v1.json",
+  "title": "W3 Action display: block (v1)",
+  "description": "Optional top-level display: block in w3-action.yaml. Renderers like the W3 Explorer use this to render branded per-command widgets. See docs/display-schema.md for the canonical reference.",
+  "type": "object",
+  "required": ["brand", "commands"],
+  "additionalProperties": false,
+  "properties": {
+    "brand": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "short_name": { "type": "string" },
+        "description": { "type": "string" },
+        "logo": { "type": "string", "format": "uri" },
+        "color": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "description": "Hex accent color, e.g. #1A1A2E"
+        }
+      }
+    },
+    "commands": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-z][a-z0-9-]*$": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "icon": {
+              "type": "string",
+              "description": "Renderer-defined named icon (e.g. lock, vault, check, send, redeem, info, chart)"
+            },
+            "title_template": { "type": "string" },
+            "subtitle_template": { "type": "string" },
+            "summary": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["label", "value"],
+                "additionalProperties": false,
+                "properties": {
+                  "label": { "type": "string" },
+                  "value": { "type": "string" }
+                }
+              }
+            },
+            "outputs": {
+              "type": "object",
+              "description": "Named output paths (e.g. tx_hash: outputs.result.transaction_id)"
+            },
+            "tx_hash_path": {
+              "type": "string",
+              "description": "Dot-path to the transaction hash in outputs, used with chain_explorer"
+            },
+            "chain_explorer": {
+              "type": "object",
+              "description": "Map of chain identifier → explorer URL template containing {{tx_hash}}",
+              "additionalProperties": {
+                "type": "string",
+                "pattern": ".*\\{\\{\\s*tx_hash\\s*\\}\\}.*"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

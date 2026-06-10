@@ -1,0 +1,5 @@
+node_modules/
+.env
+# .npmrc is committed (token-free, just scope mapping for the public
+# @w3-io/action-core package). If you add a publish token locally, do
+# NOT commit it — use ~/.npmrc or NODE_AUTH_TOKEN env var instead.

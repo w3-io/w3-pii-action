@@ -1,0 +1,32 @@
+# TODO: Replace with a realistic example workflow for your action.
+#
+# This file serves as both documentation and a testable example.
+# It should be copy-pasteable — a user should be able to use this
+# workflow with minimal changes (just adding their secret).
+
+name: YourPartner example
+
+on:
+  workflow_dispatch:
+    inputs:
+      input:
+        description: Value to pass to the action
+        required: true
+
+jobs:
+  example:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Run action
+        id: result
+        uses: w3-io/w3-yourpartner-action@v1
+        with:
+          command: example-command
+          api-key: ${{ secrets.YOURPARTNER_API_KEY }}
+          input: ${{ inputs.input }}
+
+      - name: Show results
+        run: |
+          echo "Result:"
+          echo '${{ steps.result.outputs.result }}' | jq .

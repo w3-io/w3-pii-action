@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # Reads @w3-io/action-lint from GitHub Packages on every npm/npx call.
+    # GITHUB_TOKEN only has read:packages for the same repo; cross-repo
+    # private packages need a PAT. See W3_NPM_TOKEN repo secret.
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.W3_NPM_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@w3-io'
+
+      - run: npm ci
+
+      - name: Standards lint
+        run: npx @w3-io/action-lint@latest
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify dist is up to date
+        run: |
+          git diff --exit-code dist/ || {
+            echo "dist/ is out of date. Run 'npm run build' and commit."
+            exit 1
+          }

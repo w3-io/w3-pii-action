@@ -1,0 +1,133 @@
+# W3 manifest — synced to the MCP registry on release. Keep in sync with action.yml.
+#
+# DRAFT v0 contract (Story 1.2 / W3-797, Epic 1 W3-767). The two-command shape
+# (no `tombstone` command; orchestrator passes `deletion-attested` in) is pending
+# RJ's confirmation on w3-give #104 — see that PR thread before publishing.
+
+kind: integration
+partner: w3-give
+name: PII Envelope
+version: 0.1.0
+repo: w3-io/w3-pii-action
+
+description: >
+  Self-hosted PII envelope. Generates a per-user data key (DEK) inside
+  the action's runtime, AES-256-GCM-encrypts a PII payload, stores the
+  ciphertext in Storj, and wraps the DEK under a tenant master key
+  (KEK). Decrypt returns plaintext only when the caller asserts no
+  deletion tombstone exists. Keys never leave the action; the workflow
+  run only ever sees the wrapped DEK and the opaque blob key.
+
+context: >
+  Use for donor PII in w3-give workflows: onboard-user calls
+  encrypt-and-store and persists the returned wrapped_dek +
+  pii_blob_key onto the User row via the state action; PII reads call
+  decrypt-for-read. The DEK is generated in-action (Node CSPRNG), so
+  workflows need no random primitive. The action does NOT read state:
+  the caller performs the UserDeletion tombstone check and passes the
+  result in via deletion-attested (fail-closed — true means
+  ACCESS_DENIED, no plaintext). Requires the tenant KEK and Storj
+  credentials as secret-backed inputs; never inline them.
+
+commands:
+  - name: encrypt-and-store
+    description: >
+      Generate a per-user DEK, AES-256-GCM-encrypt the plaintext,
+      upload the ciphertext to Storj at a tenant-scoped key
+      (pii/{user-id}/{blob-id}), wrap the DEK under the tenant KEK,
+      and return the wrapped DEK + blob key. Plaintext, the raw DEK,
+      and raw ciphertext never leave the action.
+    inputs:
+      tenant-id:
+        type: string
+        required: true
+        description: Tenant scope; selects the KEK and prefixes the blob key
+      user-id:
+        type: string
+        required: true
+        description: Donor id; segment of the blob key
+      plaintext:
+        type: string
+        required: true
+        description: PII payload (JSON string) to encrypt
+      bucket:
+        type: string
+        required: true
+        description: 'Storj bucket, e.g. hope-give-pii'
+      provider:
+        type: string
+        required: false
+        description: 'KEK provider (default: self-hosted)'
+      kek:
+        type: string
+        required: true
+        description: Tenant master KEK; pass via secrets, never inline
+      storj-access-key:
+        type: string
+        required: true
+        description: Pass via secrets, never inline
+      storj-secret-key:
+        type: string
+        required: true
+        description: Pass via secrets, never inline
+    outputs:
+      result:
+        type: object
+        description: '{ wrapped_dek, pii_blob_key }'
+
+  - name: decrypt-for-read
+    description: >
+      Fail-closed when deletion-attested is true (no fetch, no
+      plaintext — ACCESS_DENIED). Otherwise fetch the blob from Storj,
+      unwrap the DEK under the tenant KEK, AES-256-GCM-decrypt, and
+      return the plaintext.
+    inputs:
+      tenant-id:
+        type: string
+        required: true
+        description: Tenant scope; selects the KEK
+      user-id:
+        type: string
+        required: true
+        description: Donor id (audit + scope)
+      wrapped-dek:
+        type: string
+        required: true
+        description: From the User row (written at onboarding)
+      pii-blob-key:
+        type: string
+        required: true
+        description: From the User row (written at onboarding)
+      bucket:
+        type: string
+        required: true
+        description: Storj bucket
+      deletion-attested:
+        type: string
+        required: true
+        description: >
+          'true' if a UserDeletion attestation exists — the caller
+          reads state and passes the result in. true means
+          ACCESS_DENIED: no fetch, no plaintext.
+      provider:
+        type: string
+        required: false
+        description: 'KEK provider (default: self-hosted)'
+      kek:
+        type: string
+        required: true
+        description: Tenant master KEK; pass via secrets, never inline
+      storj-access-key:
+        type: string
+        required: true
+        description: Pass via secrets, never inline
+      storj-secret-key:
+        type: string
+        required: true
+        description: Pass via secrets, never inline
+    outputs:
+      result:
+        type: object
+        description: >
+          { plaintext } on success; fails ACCESS_DENIED (no plaintext)
+          when deletion-attested

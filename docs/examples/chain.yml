@@ -1,0 +1,52 @@
+# Example: Chain operations in a W3 workflow
+#
+# Shows how to read contract state, approve tokens, and deposit
+# into a contract — a typical DeFi integration pattern.
+
+name: DeFi Deposit
+
+on:
+  trigger:
+    type: dispatch
+
+jobs:
+  deposit:
+    signer: ${{ secrets.ETH_PRIVATE_KEY }}
+    steps:
+      # Step 1: Check USDC balance
+      - uses: evm/get-token-balance
+        id: balance
+        with:
+          chain: ethereum
+          token: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+          address: ${{ signer.address }}
+
+      # Step 2: Approve USDC for vault
+      - uses: evm/approve-token
+        with:
+          chain: ethereum
+          token: USDC
+          spender: '0xVaultAddress'
+          amount: '1000'
+
+      # Step 3: Deposit into vault
+      - uses: evm/call-contract
+        id: deposit
+        with:
+          chain: ethereum
+          contract: '0xVaultAddress'
+          method: 'deposit(uint256,uint256,address)'
+          args: ['1000000000', '1', '${{ signer.address }}']
+          # Gas estimation handles complex vault interactions
+          # Default 1.3x multiplier provides headroom
+
+      # Step 4: Log the result
+      - uses: w3-io/w3-actions/emit@v0
+        with:
+          command: emit
+          event: deposit-complete
+          data: |
+            {
+              "txHash": "${{ steps.deposit.outputs.txHash }}",
+              "status": "${{ steps.deposit.outputs.status }}"
+            }

@@ -1,0 +1,85 @@
+# Native crypto step examples.
+#
+# W3 provides built-in crypto: steps that run in-process on
+# validators — no Docker container needed. These are faster
+# than shell-based alternatives and produce deterministic outputs.
+#
+# Available actions: aes-encrypt, aes-decrypt, ed25519-sign,
+# ed25519-verify, ed25519-public-key, keccak-256, hkdf,
+# jwt-create, jwt-verify, totp
+
+name: Crypto examples
+
+on: workflow_dispatch
+
+jobs:
+  hash-and-sign:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      # Hash data with keccak-256 (Ethereum-compatible)
+      - id: hash
+        crypto:
+          keccak-256:
+            data: '48656c6c6f' # "Hello" in hex
+
+      # Sign the hash with Ed25519
+      - id: sig
+        crypto:
+          ed25519-sign:
+            privateKey: '${{ secrets.SIGNING_KEY }}'
+            message: '${{ steps.hash.outputs.hash }}'
+
+      # Verify the signature
+      - id: verify
+        crypto:
+          ed25519-verify:
+            publicKey: '${{ secrets.PUBLIC_KEY }}'
+            message: '${{ steps.hash.outputs.hash }}'
+            signature: '${{ steps.sig.outputs.signature }}'
+
+      # Use the results in a shell step
+      - run: |
+          echo "Hash:      ${{ steps.hash.outputs.hash }}"
+          echo "Signature: ${{ steps.sig.outputs.signature }}"
+          echo "Valid:     ${{ steps.verify.outputs.valid }}"
+
+  encrypt-decrypt:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      # Encrypt sensitive data
+      - id: encrypt
+        crypto:
+          aes-encrypt:
+            key: '${{ secrets.AES_KEY }}'
+            plaintext: '48656c6c6f' # "Hello" in hex
+
+      # Decrypt it back
+      - id: decrypt
+        crypto:
+          aes-decrypt:
+            key: '${{ secrets.AES_KEY }}'
+            ciphertext: '${{ steps.encrypt.outputs.ciphertext }}'
+
+      - run: echo "Decrypted ${{ steps.decrypt.outputs.plaintext }}"
+
+  jwt-auth:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      # Create a signed JWT for API authentication
+      - id: token
+        crypto:
+          jwt-create:
+            algorithm: 'HS256'
+            claims: '{"sub":"workflow","aud":"api.example.com","exp":9999999999}'
+            key: '${{ secrets.JWT_SECRET }}'
+
+      # Use the JWT in an HTTP call
+      - uses: w3-io/w3-actions/http@v0
+        with:
+          command: request
+          method: GET
+          url: https://api.example.com/data
+          headers: '{"Authorization": "Bearer ${{ steps.token.outputs.token }}"}'
