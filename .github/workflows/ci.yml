@@ -47,8 +47,10 @@ jobs:
 
       - name: Verify dist is up to date
         run: |
-          if [ -n "$(git status --porcelain dist/)" ]; then
-            git status --porcelain dist/
+          # Stage first so `git diff` also catches NEW/untracked ncc chunks,
+          # not just modified ones (plain `git diff dist/` ignores untracked).
+          git add -A dist/
+          git diff --cached --exit-code dist/ || {
             echo "dist/ is out of date (modified or untracked outputs). Run 'npm run build' and commit all of dist/."
             exit 1
-          fi
+          }
