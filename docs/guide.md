@@ -1,49 +1,84 @@
-# YourPartner Integration
+# PII Envelope — usage guide
 
-<!-- TODO: Replace with your partner name and context -->
+## What is this?
 
-## What is YourPartner?
+The self-hosted donor-PII envelope for w3-give (Story 1.2 / W3-797). It keeps
+donor PII out of workflow state: the payload lives as an AES-256-GCM blob in
+Storj, encrypted with a per-user **DEK** that the action generates internally
+(Node CSPRNG) and returns only **wrapped** under the tenant master **KEK**.
+GDPR/CCPA deletion is enforced by the caller-supplied `deletion-attested` gate
+(the orchestrator reads the `UserDeletion` attestation from state; the action
+itself is stateless).
 
-<!-- TODO: One paragraph — who they are, what their service does, why
-someone would use it in a workflow. This context matters as much as
-the technical reference. -->
-
-## Quick Start
+## Quick start
 
 ```yaml
-- uses: w3-io/w3-yourpartner-action@v0
+- name: Encrypt + store donor PII
+  id: pii
+  uses: w3-io/w3-pii-action@v0
   with:
-    command: example-command
-    api-key: ${{ secrets.PARTNER_API_KEY }}
-    input: 'value'
+    command: encrypt-and-store
+    tenant-id: ${{ inputs.tenant_id }}
+    user-id: ${{ inputs.user_id }}
+    plaintext: ${{ steps.payload.outputs.pii_json }}
+    bucket: hope-give-pii
+    kek: ${{ secrets.HOPE_GIVE_PII_KEK }}
+    storj-access-key: ${{ secrets.STORJ_ACCESS_KEY }}
+    storj-secret-key: ${{ secrets.STORJ_SECRET_KEY }}
+# Persist via the state action (NOT this action's job):
+#   wrapped_dek  = ${{ fromJSON(steps.pii.outputs.result).wrapped_dek }}
+#   pii_blob_key = ${{ fromJSON(steps.pii.outputs.result).pii_blob_key }}
+```
+
+```yaml
+- name: Read donor PII (deletion-gated)
+  id: read
+  uses: w3-io/w3-pii-action@v0
+  with:
+    command: decrypt-for-read
+    tenant-id: ${{ inputs.tenant_id }}
+    user-id: ${{ inputs.user_id }}
+    wrapped-dek: ${{ fromJSON(steps.user.outputs.result).wrapped_dek }}
+    pii-blob-key: ${{ fromJSON(steps.user.outputs.result).pii_blob_key }}
+    bucket: hope-give-pii
+    deletion-attested: ${{ steps.deletion_check.outputs.exists }}
+    kek: ${{ secrets.HOPE_GIVE_PII_KEK }}
+    storj-access-key: ${{ secrets.STORJ_ACCESS_KEY }}
+    storj-secret-key: ${{ secrets.STORJ_SECRET_KEY }}
+# result: { plaintext } — or the step FAILS with ACCESS_DENIED when attested.
 ```
 
 ## Commands
 
-<!-- TODO: One section per command with inputs, outputs, and example YAML -->
+| Command             | Result JSON                     | Notes                                                            |
+| ------------------- | ------------------------------- | ---------------------------------------------------------------- |
+| `encrypt-and-store` | `{ wrapped_dek, pii_blob_key }` | DEK generated in-action; plaintext/DEK/ciphertext never leave it |
+| `decrypt-for-read`  | `{ plaintext }`                 | Fail-closed: only `deletion-attested: 'false'` proceeds          |
 
-### example-command
+## Key + blob format (implementation contract)
 
-**Inputs:**
+- **KEK input:** 64-char hex or base64; must decode to exactly 32 bytes.
+- **Sealed layout:** `iv(12) || gcm-tag(16) || ciphertext`; `wrapped_dek` is that
+  layout over the 32-byte DEK, base64-encoded (60 bytes → 80 b64 chars).
+- **AAD:** every seal is bound to `tenantId|userId` — ciphertext replayed under
+  another tenant/user fails authentication (cryptographic tenant isolation, on
+  top of the `tenantId/` blob-key prefix guard).
+- **Blob key:** `{tenant-id}/pii/{user-id}/{uuid}` inside the tenant bucket.
 
-| Input   | Type   | Required | Description     |
-| ------- | ------ | -------- | --------------- |
-| `input` | string | Yes      | What to process |
+## Error codes
 
-**Output:**
+| Code               | When                                                                                               |
+| ------------------ | -------------------------------------------------------------------------------------------------- |
+| `ACCESS_DENIED`    | `deletion-attested: 'true'`, or a blob key outside the tenant scope                                |
+| `INVALID_INPUT`    | missing/malformed inputs; non-`true`/`false` gate value (fail-closed); bad KEK                     |
+| `DECRYPT_FAILED`   | wrong KEK, wrong tenant/user scope, tampered or malformed payload (deliberately not distinguished) |
+| `NOT_FOUND`        | blob missing from the bucket                                                                       |
+| `UPSTREAM_FAILURE` | Storj/S3 transport or permission errors                                                            |
+| `NOT_SUPPORTED`    | `provider` other than `self-hosted` (v0)                                                           |
 
-```json
-{ "result": "..." }
-```
+## v0 tombstone caveat
 
-## Authentication
-
-<!-- TODO: How to get API key, where to store it -->
-
-## Error Handling
-
-<!-- TODO: Common errors and resolutions -->
-
-## Examples
-
-<!-- TODO: Real workflow patterns, not just API calls -->
+This is a **policy** tombstone: the wrapped DEK and the KEK both persist, so a
+path that bypasses the orchestrator's `UserDeletion` check could still decrypt.
+True crypto-erasure (per-user key destruction/rotation) is the W3-797 hardening
+follow-up.

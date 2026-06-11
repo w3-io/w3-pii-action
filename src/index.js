@@ -10,8 +10,9 @@
 
 import { run } from './main.js'
 
-// Suppress noisy unhandled rejection warnings; main.js's try/catch handles
-// them via core.setFailed and structured error reporting.
+// Command-handler errors are handled inside the router (action-core attaches
+// handleError to the handler promise); this only suppresses the noisy default
+// unhandledRejection warning.
 process.on('unhandledRejection', () => {})
 
 run()

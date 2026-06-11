@@ -1,37 +1,89 @@
-# E2E Test Workflow
+# E2E Test Workflow — w3-pii-action
 #
-# Exercises every command against real APIs/contracts.
+# Round-trips one PII blob through the real action against real Storj:
+# encrypt-and-store → decrypt-for-read (gate=false) → decrypt-for-read
+# (gate=true, expected ACCESS_DENIED).
+#
 # Run on a local W3 network with:
 #   w3 workflow deploy test/workflows/e2e.yaml
-#   w3 workflow "<name>" trigger
+#   w3 workflow "e2e-test-pii" trigger
 #
 # Prerequisites:
 #   - W3 local network running (make dev)
-#   - TODO: list required env vars (e.g., export W3_SECRET_ETHEREUM="0x...")
+#   - Secrets: PII_KEK_E2E (32-byte base64/hex), STORJ_ACCESS_KEY,
+#     STORJ_SECRET_KEY; an existing test bucket (default: w3-pii-e2e)
 #
-# This workflow is NOT run by CI. It's a manual validation tool
-# for proving the action works end-to-end through the W3 protocol.
+# NOT run by CI — manual validation that the action works end-to-end
+# through the W3 protocol.
 
-name: e2e-test-yourpartner # TODO: change to your action name
-on: workflow_dispatch
+name: e2e-test-pii
+on:
+  workflow_dispatch:
+    inputs:
+      tenant_id: { type: string, required: false, default: 'e2e-tenant' }
+      user_id: { type: string, required: false, default: 'e2e-user-01' }
+      bucket: { type: string, required: false, default: 'w3-pii-e2e' }
 
 jobs:
-  reads:
+  roundtrip:
     runs-on: ubuntu-latest
     steps:
-      # TODO: Add read-only commands here
-      - name: Example read command
-        uses: w3-io/w3-yourpartner-action@v0
+      - name: encrypt-and-store
+        id: enc
+        uses: w3-io/w3-pii-action@master
         with:
-          command: example-command
-          # TODO: add required inputs
+          command: encrypt-and-store
+          tenant-id: ${{ inputs.tenant_id }}
+          user-id: ${{ inputs.user_id }}
+          plaintext: '{"email":"e2e—tešt@example.com","name":"Zoë 大久保 🎁"}'
+          bucket: ${{ inputs.bucket }}
+          kek: ${{ secrets.PII_KEK_E2E }}
+          storj-access-key: ${{ secrets.STORJ_ACCESS_KEY }}
+          storj-secret-key: ${{ secrets.STORJ_SECRET_KEY }}
 
-  writes:
-    runs-on: ubuntu-latest
-    steps:
-      # TODO: Add write commands here (require credentials)
-      - name: Example write command
-        uses: w3-io/w3-yourpartner-action@v0
+      - name: decrypt-for-read (gate open)
+        id: dec
+        uses: w3-io/w3-pii-action@master
         with:
-          command: example-write
-          # TODO: add required inputs
+          command: decrypt-for-read
+          tenant-id: ${{ inputs.tenant_id }}
+          user-id: ${{ inputs.user_id }}
+          wrapped-dek: ${{ fromJSON(steps.enc.outputs.result).wrapped_dek }}
+          pii-blob-key: ${{ fromJSON(steps.enc.outputs.result).pii_blob_key }}
+          bucket: ${{ inputs.bucket }}
+          deletion-attested: 'false'
+          kek: ${{ secrets.PII_KEK_E2E }}
+          storj-access-key: ${{ secrets.STORJ_ACCESS_KEY }}
+          storj-secret-key: ${{ secrets.STORJ_SECRET_KEY }}
+
+      - name: assert round-trip
+        run: |
+          GOT='${{ fromJSON(steps.dec.outputs.result).plaintext }}'
+          WANT='{"email":"e2e—tešt@example.com","name":"Zoë 大久保 🎁"}'
+          if [ "$GOT" = "$WANT" ]; then echo "PASS: byte-exact round-trip"; else echo "FAIL"; exit 1; fi
+
+      # Deletion gate: this step is EXPECTED to fail with ACCESS_DENIED.
+      # continue-on-error lets the run record the refusal without failing e2e.
+      - name: decrypt-for-read (gate closed — expect ACCESS_DENIED)
+        id: denied
+        continue-on-error: true
+        uses: w3-io/w3-pii-action@master
+        with:
+          command: decrypt-for-read
+          tenant-id: ${{ inputs.tenant_id }}
+          user-id: ${{ inputs.user_id }}
+          wrapped-dek: ${{ fromJSON(steps.enc.outputs.result).wrapped_dek }}
+          pii-blob-key: ${{ fromJSON(steps.enc.outputs.result).pii_blob_key }}
+          bucket: ${{ inputs.bucket }}
+          deletion-attested: 'true'
+          kek: ${{ secrets.PII_KEK_E2E }}
+          storj-access-key: ${{ secrets.STORJ_ACCESS_KEY }}
+          storj-secret-key: ${{ secrets.STORJ_SECRET_KEY }}
+
+      - name: assert refusal
+        run: |
+          if [ "${{ steps.denied.outcome }}" = "failure" ]; then
+            echo "PASS: deletion gate refused"
+          else
+            echo "FAIL: gate did not refuse"; exit 1
+          fi

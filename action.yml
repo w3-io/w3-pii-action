@@ -39,6 +39,9 @@ inputs:
   storj-secret-key:
     description: 'Storj secret key (secret-backed)'
     required: true
+  storj-endpoint:
+    description: 'Override the Storj S3 gateway endpoint (e.g. MinIO for staging); default https://gateway.storjshare.io'
+    required: false
 
   # encrypt-and-store
   plaintext:

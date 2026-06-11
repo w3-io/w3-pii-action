@@ -33,8 +33,8 @@ commands:
   - name: encrypt-and-store
     description: >
       Generate a per-user DEK, AES-256-GCM-encrypt the plaintext,
-      upload the ciphertext to Storj at a tenant-scoped key
-      (pii/{user-id}/{blob-id}), wrap the DEK under the tenant KEK,
+      upload the ciphertext to Storj at the tenant-scoped key
+      {tenant-id}/pii/{user-id}/{blob-id}, wrap the DEK under the tenant KEK,
       and return the wrapped DEK + blob key. Plaintext, the raw DEK,
       and raw ciphertext never leave the action.
     inputs:
@@ -70,6 +70,10 @@ commands:
         type: string
         required: true
         description: Pass via secrets, never inline
+      storj-endpoint:
+        type: string
+        required: false
+        description: 'Override the Storj S3 gateway endpoint (e.g. MinIO for staging)'
     outputs:
       result:
         type: object
@@ -106,9 +110,10 @@ commands:
         type: string
         required: true
         description: >
-          'true' if a UserDeletion attestation exists — the caller
-          reads state and passes the result in. true means
-          ACCESS_DENIED: no fetch, no plaintext.
+          Strictly the string 'true' or 'false' (the caller reads the
+          UserDeletion attestation from state and passes the result in).
+          'true' => ACCESS_DENIED, no fetch, no plaintext; any other value
+          (including empty) fails closed with INVALID_INPUT.
       provider:
         type: string
         required: false
@@ -125,6 +130,10 @@ commands:
         type: string
         required: true
         description: Pass via secrets, never inline
+      storj-endpoint:
+        type: string
+        required: false
+        description: 'Override the Storj S3 gateway endpoint (e.g. MinIO for staging)'
     outputs:
       result:
         type: object
