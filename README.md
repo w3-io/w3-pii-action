@@ -79,7 +79,7 @@ Contract source of truth: [`w3-action.yaml`](w3-action.yaml). Design inputs:
 - [x] Unit suite (`test/pii.test.js`): byte-exact multibyte round-trip,
       deletion-refusal (no plaintext, no fetch), tenant isolation (structural +
       cryptographic AAD), idempotent re-put, integrity/failure modes
+- [x] Published `@v0` (v0.1.0) — `uses: w3-io/w3-pii-action@v0`
 - [ ] First real Storj e2e recorded in `test/workflows/RESULTS.md` (see `TODO.md`)
-- [ ] Publish `@v0` tag
 
 See [`TODO.md`](TODO.md) for known gaps and the W3-797 crypto-erasure follow-up.

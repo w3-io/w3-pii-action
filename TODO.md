@@ -4,9 +4,8 @@ Known gaps and follow-ups, newest version first.
 
 ## v0 (Story 1.2 / W3-797)
 
-- [ ] **Publish `@v0` tag** after this review lands and the first real Storj
-      round-trip is recorded. `docs/guide.md` invocation examples pin `@v0`;
-      `test/workflows/e2e.yaml` pins `@master` until the tag exists.
+- [x] **Published `@v0`** (v0.1.0, 2026-06-12). `uses: w3-io/w3-pii-action@v0`.
+      `test/workflows/e2e.yaml` still pins `@master` to exercise the tip.
 - [ ] **Fill `test/workflows/RESULTS.md`** from a real devnet run against Storj
       (round-trip + the expected ACCESS_DENIED refusal). Currently the unit
       suite (`test/pii.test.js`) is the conformance evidence; the e2e is wired
